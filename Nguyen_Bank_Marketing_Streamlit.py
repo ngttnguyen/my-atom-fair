@@ -108,24 +108,51 @@ def quick_predict_client():
             result_str = 'high - potential' if y_pred == 1 else 'low - potential'
             st.write('This is a '+ result_str + ' client for this tele marketing campain')
 
+def visualize_predicted_result(df, target):
+    data = df.groupby(target).size().sort_values(ascending=False)
+    label_dict = {1:'yes',0:'no'}
+    fig = plt.figure(figsize = (4,3))
+    plt.pie(x=data , autopct="%.1f%%", explode=[0.05]*len(data), labels= [label_dict[val] for val in data.index.tolist()]);
+    plt.title("The predicted percentage of success");
+    st.pyplot(fig)  
+    
 def predict_data_file(file):
     upload_data = get_df(file)
     features = [col for col in marketing_df.columns.tolist() if col != 'y']
     input_data  = upload_data[features]
+    st.markdown('Lis of clients to predict:')
     st.write(input_data)
     
+    ## prediction
     client_df = process_input_client(input_data)
     X_client_test = scaler.transform(client_df)
-    
     y_client_pred = model.predict(X_client_test)
+    result_col = 'predict'
+    upload_data[result_col] = y_client_pred
     
-    # result_str = 'high - potential' if y_pred == 1 else 'low - potential'
-    # st.write('This is a '+ result_str + 'client for this tele marketing campain')
-    
+    ## summary result  
     pred_success_cnt = sum((y_client_pred == 1))
     total_cnt = len(y_client_pred)
-    st.write (str(round(pred_success_cnt/total_cnt * 100,2))+"% clients will say YES")
-            
+    st.markdown('Predicted result:')
+    st.markdown (str(pred_success_cnt) +" clients will say YES over "+str(total_cnt) +' people')
+    visualize_predicted_result(upload_data, result_col)
+    
+    ## view result
+    view_result_option = ['view all',"view successful list", "view unsuccesful list"]
+    view_type_id = st.selectbox('Choose view:',options = view_result_option)
+    if (view_type_id == view_result_option[0]):
+        st.write(upload_data) 
+    else:
+        if (view_type_id == view_result_option[1]):
+            view_filter = upload_data[result_col] == 1 
+        else:
+            view_filter = upload_data[result_col] == 0
+        
+        st.write(upload_data[view_filter])
+     
+
+     
+        
 # Initial setup
 # st.set_page_config(layout="wide")
 def get_df(file):
