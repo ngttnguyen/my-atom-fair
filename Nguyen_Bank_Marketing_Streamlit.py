@@ -187,7 +187,7 @@ def main():
     if (predict_type_id  == predict_option[0]):
         quick_predict_client()
     elif (predict_type_id  == predict_option[1]):
-        file = st.file_uploader("Upload file", type=['csv','xlsx','pickle'])
+        file = st.file_uploader("Upload file", type=['csv'])
         if not file:
             st.write("Upload a .csv or .xlsx file to get started")
         else:
