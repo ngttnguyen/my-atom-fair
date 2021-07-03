@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from pandas_profiling import ProfileReport
+from streamlit_pandas_profiling import st_profile_report
+
+from sklearn.preprocessing import MinMaxScaler
 import json
 import pickle
 from matplotlib import pyplot as plt
@@ -66,37 +70,10 @@ def get_cat_cols_val(data):
         unique_dict[col] = unique_col
     return unique_dict
 
-# Initial setup
-# st.set_page_config(layout="wide")
-
-#### L O A D  Data
-data_file_path = "data/bank-additional-full.csv"
-marketing_df = pd.read_csv(data_file_path,sep = ";")
-
-model_file_path = "model/pkl_model.pkl"
-model = pickle.load(open(model_file_path, 'rb'))
-
-
-
-#### M A I N  Function
-def main():
-    
+def quick_predict_client():
     client_df_ok = pd.read_csv("client_df.csv", index_col = 'Unnamed: 0')
-    
-    # client= process_input_client(client_df_ok )
-    # print(client)
-    # X_client_test = client.drop(['y'], axis = 1) 
-    # X_client_test = StandardScaler().fit_transform(X_client_test)
-    # print(X_client_test)
-    # y_client_pred = model.predict(X_client_test)
-    # print(y_client_pred)
-    
-    # unique_dict = get_cat_cols_val(marketing_df) #contain unique values of features
-    
-    st.title('Banking TeleMarketing prediction')
-    st.sidebar.markdown('## XGBoost Classifier')
-    st.markdown("Input client's information: ")
 
+    st.markdown("Input client's information: ")
     target = 'y'
     tam = 1
     # num_cols = marketing_df.dtypes[marketing_df.dtypes != 'object'].index.tolist()
@@ -125,12 +102,69 @@ def main():
             st.write(client_df)
             #client_df = client_df_ok .drop(['y'], axis = 1) 
             client_df = process_input_client(client_df)
-            
-            X_test = client_df #StandardScaler().fit_transform(client_df)
+            X_test = scaler.transform(client_df)
             
             y_pred = model.predict(X_test)
-            st.write('yes' if y_pred == 1 else 'no')
+            result_str = 'high - potential' if y_pred == 1 else 'low - potential'
+            st.write('This is a '+ result_str + ' client for this tele marketing campain')
+
+def predict_data_file(file):
+    upload_data = get_df(file)
+    features = [col for col in marketing_df.columns.tolist() if col != 'y']
+    input_data  = upload_data[features]
+    st.write(input_data)
+    
+    client_df = process_input_client(input_data)
+    X_client_test = scaler.transform(client_df)
+    
+    y_client_pred = model.predict(X_client_test)
+    
+    # result_str = 'high - potential' if y_pred == 1 else 'low - potential'
+    # st.write('This is a '+ result_str + 'client for this tele marketing campain')
+    
+    pred_success_cnt = sum((y_client_pred == 1))
+    total_cnt = len(y_client_pred)
+    st.write (str(round(pred_success_cnt/total_cnt * 100,2))+"% clients will say YES")
             
+# Initial setup
+# st.set_page_config(layout="wide")
+def get_df(file):
+      # get extension and read file
+  extension = file.name.split('.')[1]
+  if extension.upper() == 'CSV':
+    df = pd.read_csv(file,sep = ',')
+  elif extension.upper() == 'XLSX':
+    df = pd.read_excel(file, engine='openpyxl')
+  elif extension.upper() == 'PICKLE':
+    df = pd.read_pickle(file)
+  return df
+
+#### L O A D  Data
+data_file_path = "data/bank-additional-full.csv"
+marketing_df = pd.read_csv(data_file_path,sep = ";")
+
+model_file_path = "model/pkl_model.pkl"
+model = pickle.load(open(model_file_path, 'rb'))
+
+scaler_file_path = "model/pkl_scaler.pkl"
+scaler = pickle.load(open(scaler_file_path, 'rb'))
+
+#### M A I N  Function
+def main():
+    
+    st.title('Banking TeleMarketing prediction')
+    st.sidebar.markdown('## XGBoost Classifier')
+    predict_option = ['quick predict','predict on data file']
+    predict_type_id = st.sidebar.selectbox('Choose predict:',options = predict_option)
+    
+    if (predict_type_id  == predict_option[0]):
+        quick_predict_client()
+    elif (predict_type_id  == predict_option[1]):
+        file = st.file_uploader("Upload file", type=['csv','xlsx','pickle'])
+        if not file:
+            st.write("Upload a .csv or .xlsx file to get started")
+        else:
+            predict_data_file(file)
            
 main()
 
