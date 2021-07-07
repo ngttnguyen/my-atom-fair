@@ -67,7 +67,7 @@ def get_cat_cols_val(data):
         unique_dict[col] = unique_col
     return unique_dict
 
-def quick_predict_client():
+def quick_predict_client(model):
     client_df_ok = pd.read_csv("data/X_client_df.csv", index_col = 'Unnamed: 0')
 
     target = 'y'
@@ -87,7 +87,7 @@ def quick_predict_client():
         if (col_dtype == 'object'):
             col_option_lst = marketing_df[col].unique().tolist()
             col_mode = marketing_df[col].mode().tolist()[0]
-            
+        
             col_selected = col_option_lst.index(client_df_ok.iloc[tam][col])
             col_option= st.selectbox(question_dict[key],options = col_option_lst, index = col_selected)  
             client_df[col] = [col_option]
@@ -100,18 +100,17 @@ def quick_predict_client():
             client_df[col] = [col_option]
 
     if st.button('Show Prediction'):
-            st.write(client_df)
-            #client_df = client_df_ok .drop(['y'], axis = 1) 
-            client_df = process_input_client(client_df)
-            X_test = scaler.transform(client_df)
-            
-            y_pred = model.predict(X_test)
-            result_str = 'POTENTIAL' if y_pred == 1 else 'NON-POTENTIAL'
-            result ='This is a '+ result_str + ' customer for tele-marketing campaign'
-            if y_pred == 1:
-                st.success(result)
-            else:
-                st.warning(result)
+        st.write(client_df)
+        #client_df = client_df_ok .drop(['y'], axis = 1) 
+        client_df = process_input_client(client_df)
+        X_test = scaler.transform(client_df)  
+        y_pred = model.predict(X_test)
+        result_str = 'POTENTIAL' if y_pred == 1 else 'NON-POTENTIAL'
+        result ='This is a '+ result_str + ' customer for tele-marketing campaign'
+        if y_pred == 1:
+            st.success(result)
+        else:
+            st.warning(result)
 
 def visualize_predicted_result(df, target):
     st.subheader("The Predicted Percentage Of Success:")
@@ -122,7 +121,7 @@ def visualize_predicted_result(df, target):
     col1, col2, col3 = st.beta_columns(3)
     col2.pyplot(fig)   
     
-def predict_data_file(file):
+def predict_data_file(file,model):
     upload_data = get_df(file)
     features = [col for col in marketing_df.columns.tolist() if col != 'y']
     input_data  = upload_data[features]
@@ -174,10 +173,13 @@ def get_df(file):
     df = pd.read_pickle(file)
   return df
 
-def view_models_summary():
-    st.write(metric_df)
+def view_models_summary(df):
+    ## Evaluation metrics
+    st.write(df)
+
 
 #### L O A D  Data
+
 data_file_path = "data/bank-additional-full.csv"
 marketing_df = pd.read_csv(data_file_path,sep = ";")
 
@@ -185,22 +187,22 @@ scaler_file_path = "model/pkl_scaler.pkl"
 scaler = pickle.load(open(scaler_file_path, 'rb'))
 
 xgboost_clf_file_path = "model/pkl_xgboost_model.pkl"
-xgboost_clf = pickle.load(open(xgboost_clf_file_path, 'rb'))
-
 log_clf_file_path = "model/pkl_log_model.pkl"
-log_clf = pickle.load(open(log_clf_file_path, 'rb'))
-
 tree_clf_file_path = "model/pkl_decisionT_model.pkl"
-tree_clf = pickle.load(open(tree_clf_file_path, 'rb'))
-
 grboost_clf_file_path = "model/pkl_grboost_model.pkl"
-grboost_clf = pickle.load(open(grboost_clf_file_path, 'rb'))
+
 
 metric_file_path = "model/evaluation_metrics.csv"
-metric_df = pd.read_csv(metric_file_path)
 
 # Main function
 def main():
+
+    # Init model
+    xgboost_clf = pickle.load(open(xgboost_clf_file_path, 'rb'))
+    log_clf = pickle.load(open(log_clf_file_path, 'rb'))
+    tree_clf = pickle.load(open(tree_clf_file_path, 'rb'))
+    grboost_clf = pickle.load(open(grboost_clf_file_path, 'rb'))
+
 
     st.title("Bank Marketing Prediction")
     
@@ -213,39 +215,37 @@ def main():
     
     ## Summary models
     st.sidebar.subheader('Summary models')
-    model_option = ["View models' summary",'Optimal Classifier','XGBoost Classifier','GradientBoost Classifier','Decision Tree Classifier','Logistic Regressor']
-    model_type_id = st.sidebar.selectbox('Choose model',options = model_option)
-    if(model_type_id == model_option[0]):
-        view_models_summary()
-    if (model_type_id in  model_option[1:3]):
-        model = xgboost_clf
-        st.write('XGBooost')
-    elif (model_type_id == model_option[3]):
-        model = grboost_clf
-        st.write('Gradient')
-    elif (model_type_id == model_option[4]):
-        model = tree_clf
-        st.write('Tree')
-    elif (model_type_id == model_option[5]):
-        model = log_clf
-        st.write('log')
-     
-        
-    ## Choose predict
-    predict_option = ['Quick Predict','Predict With Data File']
-    predict_type_id = st.sidebar.selectbox('Choose predict',options = predict_option)
+    menu_option = ["View models' summary",'Make a prediction']
+                    # 'Optimal Classifier','XGBoost Classifier','GradientBoost Classifier','Decision Tree Classifier','Logistic Regressor']
+    menu_type_id = st.sidebar.selectbox('Menu',options = menu_option)
     
-    if (predict_type_id  == predict_option[0]):
-        quick_predict_client()
-    elif (predict_type_id  == predict_option[1]):
-        file = st.file_uploader("Upload file", type=['csv'])
-        if not file:
-            st.write("Upload a .csv or .xlsx file to get started")
-        else:
-            predict_data_file(file)
+    ## View summary
+    if(menu_type_id == menu_option[0]):
+        metric_df = pd.read_csv(metric_file_path)
+        view_models_summary(metric_df)
+        
+    else:
+        ## Make prediction
+        if (menu_type_id == menu_option[1]):
+            model = xgboost_clf
+            predict_option = ['Quick Predict','Predict With Data File']
+            predict_type_id = st.sidebar.radio('Choose predict',options = predict_option)
+            
+            ## Quick predict
+            if (predict_type_id  == predict_option[0]):
+                quick_predict_client(model)
+                ## Predict on file
+            elif (predict_type_id  == predict_option[1]):
+                file = st.file_uploader("Upload file", type=['csv'])
+                if not file:
+                    st.write("Upload a .csv or .xlsx file to get started")
+                else:
+                    predict_data_file(file,model)
+         
+   
     if st.sidebar.button("Thanks") :
         st.text("Thank you for visiting  and happy learning :)")
         st.balloons()      
 main()
 
-## Run: streamlit run apps/bank_marketing_streamlit.py
+## Run: streamlit run Nguyen_Bank_Marketing_streamlit.py
