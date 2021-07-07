@@ -230,10 +230,10 @@ def main():
     st.markdown(htk,unsafe_allow_html=True)
     
     ## Summary models
-    st.sidebar.subheader('Summarize and Predict')
+    st.sidebar.subheader('Predict and Summarize')
     menu_option = ['Make a prediction',"View model summary"]
                     
-    menu_type_id = st.sidebar.selectbox('Choose here',options = menu_option)
+    menu_type_id = st.sidebar.selectbox('Your choice:',options = menu_option)
     
     ## View summary
     if(menu_type_id == menu_option[1]):
@@ -254,9 +254,7 @@ def main():
             model_importances['Weight']= model.feature_importances_
             
         
-        visulize_feature_importances(model_importances,importance_type_id)
-        
-        
+        visulize_feature_importances(model_importances,importance_type_id)        
         
     else:
     ## Make prediction
