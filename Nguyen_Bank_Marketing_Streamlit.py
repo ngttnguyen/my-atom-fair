@@ -175,9 +175,20 @@ def get_df(file):
 
 def view_models_summary(df):
     ## Evaluation metrics
+    st.markdown('Evaluation metrics')
     st.write(df)
 
-
+def visulize_feature_importances(model_importances,model_name):
+    
+    t = model_importances['Weight'].sort_values(ascending = False).index.tolist()
+    fig = plt.figure(figsize = (12,9))
+    sns.barplot( x = model_importances.iloc[t]['Weight'], y = model_importances.iloc[t]['Feature'])
+    plt.title('The feature importances of '+ model_name)
+    plt.show()
+    col1,col2 = st.beta_columns(2)
+    col1.pyplot(fig) 
+    col2.dataframe(data=model_importances.iloc[t])
+    # st.pyplot(fig) 
 #### L O A D  Data
 
 data_file_path = "data/bank-additional-full.csv"
@@ -202,6 +213,11 @@ def main():
     log_clf = pickle.load(open(log_clf_file_path, 'rb'))
     tree_clf = pickle.load(open(tree_clf_file_path, 'rb'))
     grboost_clf = pickle.load(open(grboost_clf_file_path, 'rb'))
+    
+    model_dict = {"XGBoost Classifier" : xgboost_clf
+                  ,"GradientBoost Classifier": grboost_clf
+                  ,'Decision Tree Classifier': tree_clf
+                  ,'Logistic Regressor' : log_clf}
 
 
     st.title("Bank Marketing Prediction")
@@ -214,19 +230,37 @@ def main():
     st.markdown(htk,unsafe_allow_html=True)
     
     ## Summary models
-    st.sidebar.subheader('Summary models')
-    menu_option = ["View models' summary",'Make a prediction']
-                    # 'Optimal Classifier','XGBoost Classifier','GradientBoost Classifier','Decision Tree Classifier','Logistic Regressor']
-    menu_type_id = st.sidebar.selectbox('Menu',options = menu_option)
+    st.sidebar.subheader('Summarize and Predict')
+    menu_option = ['Make a prediction',"View model summary"]
+                    
+    menu_type_id = st.sidebar.selectbox('Choose here',options = menu_option)
     
     ## View summary
-    if(menu_type_id == menu_option[0]):
+    if(menu_type_id == menu_option[1]):
         metric_df = pd.read_csv(metric_file_path)
+        ## Evalutation metrics
         view_models_summary(metric_df)
+        st.markdown("""---""")
+        ## Visualize feature importance
+        importance_option = [val for val in model_dict.keys()]
+        importance_type_id = st.sidebar.radio('View feature importances of',options = importance_option)
+      
+        model = model_dict[importance_type_id]
+        features = [i for i in marketing_df.columns.values.tolist() if i!= 'y']
+        model_importances = pd.DataFrame({'Feature': features})
+        if model == log_clf:
+            model_importances['Weight']= model.coef_[0]
+        else:
+            model_importances['Weight']= model.feature_importances_
+            
+        
+        visulize_feature_importances(model_importances,importance_type_id)
+        
+        
         
     else:
-        ## Make prediction
-        if (menu_type_id == menu_option[1]):
+    ## Make prediction
+        if (menu_type_id == menu_option[0]):
             model = xgboost_clf
             predict_option = ['Quick Predict','Predict With Data File']
             predict_type_id = st.sidebar.radio('Choose predict',options = predict_option)

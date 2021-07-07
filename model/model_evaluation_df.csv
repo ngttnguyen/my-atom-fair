@@ -1,2 +1,0 @@
-Model,Accuracy_train,Accuracy_test,Precision_test,Recall_test,F1_test
-XGBoost Classifier,0.912615820819245,0.889740217492332,0.8593544498954344,0.932093085547085,0.8942312692097346
