@@ -26,6 +26,7 @@ def transform_pdays(val):
             return transform_dict[key]
         
 ### processing input data
+
 def process_input_client(client_df):
     
     num_cols = process_value_df[process_value_df['dtype'] != 'object']['feature'].tolist()
@@ -54,22 +55,15 @@ def process_input_client(client_df):
 
     ## onehot_encoding:
     cat_cols = [col for col in client_df.dtypes[client_df.dtypes == 'object'].index.tolist()]  
-    labelencoder = LabelEncoder()
+    # labelencoder = LabelEncoder()
     for column in cat_cols:
         client_df[column] = labelencoder.fit_transform(client_df[column])
         
     return(client_df)  
  
-def get_cat_cols_val(data):
-    unique_dict= {}
-    cat_cols = data.dtypes[data.dtypes == 'object'].index
-    for col in cat_cols:
-        unique_col = data[col].unique()
-        unique_dict[col] = unique_col
-    return unique_dict
-
 def quick_predict_client(model):
-    client_df_ok = pd.read_csv("data/ok_client.csv", index_col = 'Unnamed: 0')
+    # Show the input form to get informations
+    client_df_ok = pd.read_csv("data/ok_client.csv", index_col = 0)
 
     target = 'y'
     tam = 2
@@ -93,19 +87,26 @@ def quick_predict_client(model):
             col_option= st.selectbox(question_dict[key],options = col_option_lst, index = col_selected)  
             client_df[col] = [col_option]
         else:
-            min_val  = float(process_value_df[process_value_df['feature'] == col]['min'].iloc[0])
-            max_val  = float(process_value_df[process_value_df['feature'] == col]['max'].iloc[0])
-            value =  float(client_df_ok.iloc[tam][col])
-            step = 1.0
-            if (col in ['emp.var.rate','cons.price.idx','cons.conf.idx','euribor3m']):
+            if (col in ['emp.var.rate','cons.price.idx','cons.conf.idx','euribor3m']): 
+                min_val  = float(process_value_df[process_value_df['feature'] == col]['min'].iloc[0])
+                max_val  = float(process_value_df[process_value_df['feature'] == col]['max'].iloc[0])
+                value =  float(client_df_ok.iloc[tam][col])
                 step = 0.1
+            else:
+                min_val  = int(process_value_df[process_value_df['feature'] == col]['min'].iloc[0])
+                max_val  = int(process_value_df[process_value_df['feature'] == col]['max'].iloc[0])
+                value =  int(client_df_ok.iloc[tam][col])
+                step = 1
+
             col_option = st.slider(question_dict[key], min_value= min_val, max_value= max_val, value=value, step=step)
             
             client_df[col] = [col_option]
-
+   
+    # Predict 
     if st.button('Show Prediction'):
         st.write(client_df)
         client_df = process_input_client(client_df)
+        st.write(client_df)
         X_test = scaler.transform(client_df)  
         y_pred = model.predict(X_test)
         result_str = 'POTENTIAL' if y_pred == 1 else 'NON-POTENTIAL'
@@ -124,6 +125,7 @@ def visualize_predicted_result(df, target):
     col1, col2, col3 = st.beta_columns(3)
     col2.pyplot(fig)   
     
+  
 def predict_data_file(file,model):
     upload_data = get_df(file)
     features = process_value_df['feature'].tolist()
@@ -159,22 +161,19 @@ def predict_data_file(file,model):
             view_filter = upload_data[result_col] == 0
         # upload_data[view_filter].to_csv("data/successful_client.csv")
         st.write(upload_data[view_filter])
-     
-    
-     
         
 # Initial setup
 # st.set_page_config(layout="wide")
 def get_df(file):
-      # get extension and read file
-  extension = file.name.split('.')[1]
-  if extension.upper() == 'CSV':
-    df = pd.read_csv(file,sep = ',')
-  elif extension.upper() == 'XLSX':
-    df = pd.read_excel(file, engine='openpyxl')
-  elif extension.upper() == 'PICKLE':
-    df = pd.read_pickle(file)
-  return df
+        # get extension and read file
+    extension = file.name.split('.')[1]
+    if extension.upper() == 'CSV':
+        df = pd.read_csv(file,sep = ',')
+    elif extension.upper() == 'XLSX':
+        df = pd.read_excel(file, engine='openpyxl')
+    elif extension.upper() == 'PICKLE':
+        df = pd.read_pickle(file)
+    return df
 
 def view_models_summary(df):
     ## Evaluation metrics
@@ -216,6 +215,8 @@ tree_clf_file_path = "model/pkl_decisionT_model.pkl"
 grboost_clf_file_path = "model/pkl_grboost_model.pkl"
 
 metric_file_path = "model/evaluation_metrics.csv"
+labelencoder_file_path = "model/pkl_labelencoder.pkl"
+labelencoder = pickle.load(open(labelencoder_file_path, 'rb'))
 
 # Main function
 def main():
