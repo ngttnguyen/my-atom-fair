@@ -13,6 +13,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from sklearn.metrics import precision_recall_curve
 from sklearn import metrics
+from sklearn import tree
 from xgboost import XGBClassifier
 #import scikitplot as skplt
 import matplotlib.pyplot as plt
@@ -26,15 +27,20 @@ def transform_pdays(val):
         
 ### processing input data
 def process_input_client(client_df):
-    num_cols = marketing_df.dtypes[marketing_df.dtypes != 'object'].index.tolist()
-    cat_cols = [col for col in marketing_df.dtypes[marketing_df.dtypes == 'object'].index.tolist() if col != 'y']
+    # num_cols = marketing_df.dtypes[marketing_df.dtypes != 'object'].index.tolist()
+    # cat_cols = [col for col in marketing_df.dtypes[marketing_df.dtypes == 'object'].index.tolist() if col != 'y']
+    
+    num_cols = process_value_df[process_value_df['dtype'] != 'object']['feature'].tolist()
+    cat_cols = process_value_df[process_value_df['dtype'] == 'object']['feature'].tolist()
 
     missing_val = 'unknown'
     un_replaced_lst = ['default']
     for col in cat_cols:
         if (col in un_replaced_lst):
             continue
-        replaced_val = marketing_df[col].mode().values.tolist()[0]
+        
+        # replaced_val = marketing_df[col].mode().values.tolist()[0]
+        replaced_val = process_value_df[process_value_df['feature'] == col]['missing_rep_val'].iloc[0]
         client_df[col] = client_df[col].apply(lambda val: replaced_val if val == missing_val else val)
 
 
@@ -43,13 +49,16 @@ def process_input_client(client_df):
             client_df[col] = client_df[col].map(transform_pdays)
             cat_cols = cat_cols +['pdays'] 
             continue
-
-        if col == 'campaign':
-            replaced_val = 6
         else:
-            replaced_val = marketing_df[col].quantile(0.95)   
 
-        client_df[col] = client_df[col].apply(lambda val: replaced_val if val > replaced_val else val)
+        # if col == 'campaign':
+        #     replaced_val = 6
+        # else:
+        #     replaced_val = marketing_df[col].quantile(0.95)
+           
+            replaced_val = process_value_df[process_value_df['feature'] == col]['high_outlier_rep_val'].iloc[0]
+
+            client_df[col] = client_df[col].apply(lambda val: replaced_val if val > replaced_val else val)
 
     ## onehot_encoding:
     cat_cols = [col for col in client_df.dtypes[client_df.dtypes == 'object'].index.tolist()]  
@@ -74,8 +83,12 @@ def quick_predict_client(model):
     tam = 1
     # num_cols = marketing_df.dtypes[marketing_df.dtypes != 'object'].index.tolist()
     # cat_cols = [col for col in marketing_df.dtypes[marketing_df.dtypes == 'object'].index.tolist() if col != target]
-    cols = [col for col in marketing_df.columns.tolist() if col != 'y']
-    col_types = [marketing_df[col].dtype.name for col in cols]
+    # cols = [col for col in marketing_df.columns.tolist() if col != 'y']
+    # col_types = [marketing_df[col].dtype.name for col in cols]
+    
+    cols = process_value_df['feature'].tolist()
+    col_types = process_value_df['dtype'].tolist()
+    
     client_df = pd.DataFrame()
     question_dict = {"age": "Enter age of the customer", "job": "Enter the type of job customer do","marital": "what is customer's marital status?", "education":"Enter customer's education level?",
     "default": "Do the customer have credit in default?", "housing": "Do the customer have Housing Loan?", "loan": "Do the customer have Personal Loan?", "contact": "How do you prefer to communicate",
@@ -85,17 +98,22 @@ def quick_predict_client(model):
     "cons.price.idx": "Enter consumer price index - monthly indicator", "cons.conf.idx": "Enter consumer confidence index - monthly indicator", "euribor3m": "Enter euribor 3 month rate - daily indicator", "nr.employed": "Enter number of employees - quarterly indicator"}
     for col, col_dtype, key in zip(cols,col_types, question_dict):
         if (col_dtype == 'object'):
-            col_option_lst = marketing_df[col].unique().tolist()
-            col_mode = marketing_df[col].mode().tolist()[0]
+            # col_option_lst = marketing_df[col].unique().tolist()
+            # col_mode = marketing_df[col].mode().tolist()[0]
+            
+            col_option_lst = process_value_df[process_value_df['feature'] == col]['unique_vals'].iloc[0].split(',')
         
             col_selected = col_option_lst.index(client_df_ok.iloc[tam][col])
             col_option= st.selectbox(question_dict[key],options = col_option_lst, index = col_selected)  
             client_df[col] = [col_option]
         else:
-            min_val  = int(marketing_df[col].min())
-            max_val  = int(marketing_df[col].max())
+            min_val  = int(process_value_df[process_value_df['feature'] == col]['min'].iloc[0])
+            max_val  = int(process_value_df[process_value_df['feature'] == col]['max'].iloc[0])
             value =  int(client_df_ok.iloc[tam][col])
-            col_option = st.slider(question_dict[key], min_value= min_val, max_value= max_val, value=value, step=1)
+            step = 1
+            if (col in ['emp.var.rate','cons.price.idx','cons.conf.idx','euribor3m']):
+                step = 0.1
+            col_option = st.slider(question_dict[key], min_value= min_val, max_value= max_val, value=value, step=step)
             
             client_df[col] = [col_option]
 
@@ -123,7 +141,7 @@ def visualize_predicted_result(df, target):
     
 def predict_data_file(file,model):
     upload_data = get_df(file)
-    features = [col for col in marketing_df.columns.tolist() if col != 'y']
+    features = process_value_df['feature'].tolist()
     input_data  = upload_data[features]
     st.subheader('List Of Customers To Predict:')
     st.write(input_data)
@@ -179,7 +197,8 @@ def view_models_summary(df):
     st.write(df)
 
 def visulize_feature_importances(model_importances,model_name):
-    
+    st.markdown("""---""")
+    st.subheader("Features' weight in models")
     t = model_importances['Weight'].sort_values(ascending = False).index.tolist()
     fig = plt.figure(figsize = (12,9))
     sns.barplot( x = model_importances.iloc[t]['Weight'], y = model_importances.iloc[t]['Feature'])
@@ -189,10 +208,22 @@ def visulize_feature_importances(model_importances,model_name):
     col1.pyplot(fig) 
     col2.dataframe(data=model_importances.iloc[t])
     # st.pyplot(fig) 
+    
+def visualize_decision_tree(model, features):
+    st.markdown("""---""")
+    st.subheader('Decision Tree on Banking Tele-marketing dataset')
+    fig = plt.figure(figsize=(20,15))
+    tree.plot_tree(model,feature_names = features,rounded=True, filled = True);
+    st.pyplot(fig) 
+    
 #### L O A D  Data
 
-data_file_path = "data/bank-additional-full.csv"
-marketing_df = pd.read_csv(data_file_path,sep = ";")
+# data_file_path = "data/bank-additional-full.csv"
+# marketing_df = pd.read_csv(data_file_path,sep = ";")
+
+# data dùng để processing dữ liệu
+process_value_file_path = "data/processing_value_df.csv"
+process_value_df = pd.read_csv(process_value_file_path,index_col = 0)
 
 scaler_file_path = "model/pkl_scaler.pkl"
 scaler = pickle.load(open(scaler_file_path, 'rb'))
@@ -201,7 +232,6 @@ xgboost_clf_file_path = "model/pkl_xgboost_model.pkl"
 log_clf_file_path = "model/pkl_log_model.pkl"
 tree_clf_file_path = "model/pkl_decisionT_model.pkl"
 grboost_clf_file_path = "model/pkl_grboost_model.pkl"
-
 
 metric_file_path = "model/evaluation_metrics.csv"
 
@@ -240,21 +270,24 @@ def main():
         metric_df = pd.read_csv(metric_file_path)
         ## Evalutation metrics
         view_models_summary(metric_df)
-        st.markdown("""---""")
+        
         ## Visualize feature importance
         importance_option = [val for val in model_dict.keys()]
         importance_type_id = st.sidebar.radio('View feature importances of',options = importance_option)
       
         model = model_dict[importance_type_id]
-        features = [i for i in marketing_df.columns.values.tolist() if i!= 'y']
+        features = [i for i in process_value_df.feature.tolist()]
+        
         model_importances = pd.DataFrame({'Feature': features})
         if model == log_clf:
             model_importances['Weight']= model.coef_[0]
         else:
-            model_importances['Weight']= model.feature_importances_
-            
+            model_importances['Weight']= model.feature_importances_      
+        visulize_feature_importances(model_importances,importance_type_id)  
         
-        visulize_feature_importances(model_importances,importance_type_id)        
+        if(importance_type_id == 'Decision Tree Classifier'):
+            visualize_decision_tree(model, features) 
+            
         
     else:
     ## Make prediction
