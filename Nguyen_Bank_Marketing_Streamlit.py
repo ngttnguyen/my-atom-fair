@@ -1,21 +1,20 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+# from sklearn.preprocessing import MinMaxScaler
 import pickle
 from matplotlib import pyplot as plt
 import seaborn as sns
 pd.plotting.register_matplotlib_converters()
 import warnings
 warnings.filterwarnings("ignore")
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-from sklearn.metrics import precision_recall_curve
-from sklearn import metrics
+# from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import LabelEncoder
+# from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+# from sklearn.metrics import precision_recall_curve
+# from sklearn import metrics
 from sklearn import tree
-from xgboost import XGBClassifier
-#import scikitplot as skplt
+# from xgboost import XGBClassifier
 import matplotlib.pyplot as plt
 import base64
 st.set_page_config(layout="wide")
@@ -105,8 +104,7 @@ def quick_predict_client(model):
     # Predict 
     if st.button('Show Prediction'):
         st.write(client_df)
-        client_df = process_input_client(client_df)
-        st.write(client_df)
+        client_df = process_input_client(client_df)        
         X_test = scaler.transform(client_df)  
         y_pred = model.predict(X_test)
         result_str = 'POTENTIAL' if y_pred == 1 else 'NON-POTENTIAL'
@@ -215,6 +213,7 @@ tree_clf_file_path = "model/pkl_decisionT_model.pkl"
 grboost_clf_file_path = "model/pkl_grboost_model.pkl"
 
 metric_file_path = "model/evaluation_metrics.csv"
+
 labelencoder_file_path = "model/pkl_labelencoder.pkl"
 labelencoder = pickle.load(open(labelencoder_file_path, 'rb'))
 
