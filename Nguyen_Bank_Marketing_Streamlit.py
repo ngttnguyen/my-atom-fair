@@ -27,8 +27,6 @@ def transform_pdays(val):
         
 ### processing input data
 def process_input_client(client_df):
-    # num_cols = marketing_df.dtypes[marketing_df.dtypes != 'object'].index.tolist()
-    # cat_cols = [col for col in marketing_df.dtypes[marketing_df.dtypes == 'object'].index.tolist() if col != 'y']
     
     num_cols = process_value_df[process_value_df['dtype'] != 'object']['feature'].tolist()
     cat_cols = process_value_df[process_value_df['dtype'] == 'object']['feature'].tolist()
@@ -38,8 +36,7 @@ def process_input_client(client_df):
     for col in cat_cols:
         if (col in un_replaced_lst):
             continue
-        
-        # replaced_val = marketing_df[col].mode().values.tolist()[0]
+
         replaced_val = process_value_df[process_value_df['feature'] == col]['missing_rep_val'].iloc[0]
         client_df[col] = client_df[col].apply(lambda val: replaced_val if val == missing_val else val)
 
@@ -50,12 +47,7 @@ def process_input_client(client_df):
             cat_cols = cat_cols +['pdays'] 
             continue
         else:
-
-        # if col == 'campaign':
-        #     replaced_val = 6
-        # else:
-        #     replaced_val = marketing_df[col].quantile(0.95)
-           
+          
             replaced_val = process_value_df[process_value_df['feature'] == col]['high_outlier_rep_val'].iloc[0]
 
             client_df[col] = client_df[col].apply(lambda val: replaced_val if val > replaced_val else val)
@@ -77,14 +69,10 @@ def get_cat_cols_val(data):
     return unique_dict
 
 def quick_predict_client(model):
-    client_df_ok = pd.read_csv("data/X_client_df.csv", index_col = 'Unnamed: 0')
+    client_df_ok = pd.read_csv("data/ok_client.csv", index_col = 'Unnamed: 0')
 
     target = 'y'
-    tam = 1
-    # num_cols = marketing_df.dtypes[marketing_df.dtypes != 'object'].index.tolist()
-    # cat_cols = [col for col in marketing_df.dtypes[marketing_df.dtypes == 'object'].index.tolist() if col != target]
-    # cols = [col for col in marketing_df.columns.tolist() if col != 'y']
-    # col_types = [marketing_df[col].dtype.name for col in cols]
+    tam = 2
     
     cols = process_value_df['feature'].tolist()
     col_types = process_value_df['dtype'].tolist()
@@ -98,19 +86,17 @@ def quick_predict_client(model):
     "cons.price.idx": "Enter consumer price index - monthly indicator", "cons.conf.idx": "Enter consumer confidence index - monthly indicator", "euribor3m": "Enter euribor 3 month rate - daily indicator", "nr.employed": "Enter number of employees - quarterly indicator"}
     for col, col_dtype, key in zip(cols,col_types, question_dict):
         if (col_dtype == 'object'):
-            # col_option_lst = marketing_df[col].unique().tolist()
-            # col_mode = marketing_df[col].mode().tolist()[0]
-            
+
             col_option_lst = process_value_df[process_value_df['feature'] == col]['unique_vals'].iloc[0].split(',')
         
             col_selected = col_option_lst.index(client_df_ok.iloc[tam][col])
             col_option= st.selectbox(question_dict[key],options = col_option_lst, index = col_selected)  
             client_df[col] = [col_option]
         else:
-            min_val  = int(process_value_df[process_value_df['feature'] == col]['min'].iloc[0])
-            max_val  = int(process_value_df[process_value_df['feature'] == col]['max'].iloc[0])
-            value =  int(client_df_ok.iloc[tam][col])
-            step = 1
+            min_val  = float(process_value_df[process_value_df['feature'] == col]['min'].iloc[0])
+            max_val  = float(process_value_df[process_value_df['feature'] == col]['max'].iloc[0])
+            value =  float(client_df_ok.iloc[tam][col])
+            step = 1.0
             if (col in ['emp.var.rate','cons.price.idx','cons.conf.idx','euribor3m']):
                 step = 0.1
             col_option = st.slider(question_dict[key], min_value= min_val, max_value= max_val, value=value, step=step)
@@ -119,7 +105,6 @@ def quick_predict_client(model):
 
     if st.button('Show Prediction'):
         st.write(client_df)
-        #client_df = client_df_ok .drop(['y'], axis = 1) 
         client_df = process_input_client(client_df)
         X_test = scaler.transform(client_df)  
         y_pred = model.predict(X_test)
@@ -172,10 +157,10 @@ def predict_data_file(file,model):
             view_filter = upload_data[result_col] == 1 
         else:
             view_filter = upload_data[result_col] == 0
-        
+        # upload_data[view_filter].to_csv("data/successful_client.csv")
         st.write(upload_data[view_filter])
      
-
+    
      
         
 # Initial setup
@@ -217,9 +202,6 @@ def visualize_decision_tree(model, features):
     st.pyplot(fig) 
     
 #### L O A D  Data
-
-# data_file_path = "data/bank-additional-full.csv"
-# marketing_df = pd.read_csv(data_file_path,sep = ";")
 
 # data dùng để processing dữ liệu
 process_value_file_path = "data/processing_value_df.csv"
