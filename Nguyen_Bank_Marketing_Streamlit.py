@@ -173,7 +173,18 @@ def get_df(file):
         df = pd.read_pickle(file)
     return df
  
-    
+def visulize_feature_importances(model_importances,model_name):
+    st.markdown("""---""")
+    st.subheader("Features' weight in models")
+    t = model_importances['Weight'].sort_values(ascending = False).index.tolist()
+    fig = plt.figure(figsize = (12,9))
+    sns.barplot( x = model_importances.iloc[t]['Weight'], y = model_importances.iloc[t]['Feature'])
+    plt.title('The feature importances of '+ model_name)
+    plt.show()
+    col1,col2 = st.beta_columns(2)
+    col1.pyplot(fig) 
+    col2.dataframe(data=model_importances.iloc[t])
+        
 def visualize_decision_tree(model, features):
     st.markdown("""---""")
     st.subheader('Decision Tree on Banking Tele-marketing dataset')
