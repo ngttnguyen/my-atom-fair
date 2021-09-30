@@ -250,7 +250,7 @@ def main():
     elif (predict_type_id  == predict_option[1]):
         file = st.file_uploader("Upload file", type=['csv'])
         if not file:
-            st.write("Upload a .csv or .xlsx file to get started")
+            st.write("Upload a .csv file to get started")
         else:
             predict_data_file(file,model) 
 
